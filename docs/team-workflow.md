@@ -25,7 +25,7 @@
 ## 第一次准备（每人一次）
 
 1. 登录自己的 GitHub 账号，接受组长从仓库 Settings → Collaborators 发来的邀请。
-2. 安装 [GitHub Desktop](https://desktop.github.com/download/)，用同一账号登录。游戏构建还需要 CMake ≥ 3.21 和 Visual Studio 的“使用 C++ 的桌面开发”工作负载。
+2. 安装 [GitHub Desktop](https://desktop.github.com/download/)，用同一账号登录。游戏构建选一种编译器即可：将 x64 MinGW-w64 的 gcc 和 g++ 加入 PATH，或在 Visual Studio Installer 中安装“使用 C++ 的桌面开发”。详细入口见[项目首页](../README.md)。
 3. Desktop 点 File → Clone repository → URL，填 https://github.com/Setsuna-uwu/ParkourGame.git，选好本地目录，点 Clone。已有带 .git 的克隆就点 File → Add local repository 选现成目录。下载的 ZIP 解压目录另存，之后用克隆目录工作。
 4. Repository → Show in Explorer 打开文件夹，双击 scripts 里的 run.bat。第一次等它编译，看见游戏并能跳跃、重开，就具备了开工条件。脚本一闪即退，可以在项目目录打开 PowerShell，输入下方运行命令看完整报错。
 

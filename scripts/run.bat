@@ -1,24 +1,11 @@
 @echo off
-setlocal EnableExtensions
-
-set "CONFIG=%~1"
-if "%CONFIG%"=="" set "CONFIG=Release"
-
-call "%~dp0build.bat" %CONFIG% || exit /b 1
-
-if /I "%CONFIG%"=="Debug" (
-    call "%~dp0_debug_env.bat" || exit /b 1
-)
-
-set "GAME_EXE=%~dp0..\build\%CONFIG%\SnowParkour.exe"
-if not exist "%GAME_EXE%" (
-    echo [run] missing %GAME_EXE%
-    exit /b 1
-)
-
-echo [run] starting %CONFIG%\SnowParkour.exe
-pushd "%~dp0.." >nul || exit /b 1
-"%GAME_EXE%"
-set "CODE=%ERRORLEVEL%"
+setlocal EnableExtensions DisableDelayedExpansion
+set "CONFIG=Release"
+if /I "%~1"=="Debug" set "CONFIG=Debug"
+if not "%~1"=="" if /I not "%~1"=="Debug" if /I not "%~1"=="Release" exit /b 2
+call "%~dp0build.bat" "%CONFIG%" || exit /b 1
+pushd "%~dp0.." || exit /b 1
+"build\local\%CONFIG%\SnowParkour.exe"
+set "RESULT=%ERRORLEVEL%"
 popd
-exit /b %CODE%
+exit /b %RESULT%
