@@ -1,6 +1,11 @@
 # 雪原跑酷
 
-双击 scripts/run.bat 启动。需要 Windows x64、CMake，以及 Visual Studio 的 C++ 桌面工具，或已加入 PATH 的 MinGW-w64 和 Ninja。EasyX 已随项目附带。
+Windows x64 上双击 `scripts/run.bat`，或在任意编辑器的终端运行 `.\scripts\run.bat`。脚本直接调用编译器，只需要以下任意一套，EasyX 已随项目附带：
+
+- **MinGW-w64 x64**：把包含 `gcc.exe` 和 `g++.exe` 的目录加入 PATH，两条命令都要能用。
+- **Visual Studio 或 Build Tools**：在安装器里选“使用 C++ 的桌面开发”。脚本找不到 MinGW-w64 时会尝试加载已安装的 x64 MSVC。
+
+游戏生成在 `build/local/Release/SnowParkour.exe`。只试玩可以打开已编译的 Release 程序。改了源码再双击脚本重新编译。已有 CMake 工作流也可以继续使用 `CMakeLists.txt`，平时双击运行和测试都无需安装 CMake 或 Ninja。
 
 空格跳跃，空中再按一次可以二段跳。P 暂停或继续，撞上障碍后按 R 或点鼠标重开，Esc 退出。F1 显示碰撞框。最高分保存在游戏程序旁边的 highscore.dat。
 
