@@ -3,12 +3,16 @@
 #include <stdio.h>
 #include <string.h>
 
+/* 这两个预处理指令配合下面的 #endif 使用。第一次遇到这段就定义标记，已有标记时便跳过整段。 */
 #ifndef SP_TEST_FRAMEWORK_H
 #define SP_TEST_FRAMEWORK_H
 
+/* extern 告诉编译器下面有两个共享计数器。真正分配空间和赋初值的位置在 #endif 之后。 */
 extern int tf_checks;
 extern int tf_failures;
 
+/* 每调用一次就检查一次条件。末尾的反斜杠把下一行也算进同一个宏；do ... while (0) 让整块只执行一次。
+ * 如果条件为假，__FILE__ 和 __LINE__ 给出调用处的文件和行号，#condition 把条件本身变成可打印的文字。 */
 #define TF_CHECK(condition)                                                          \
     do {                                                                             \
         tf_checks += 1;                                                              \
@@ -18,6 +22,7 @@ extern int tf_failures;
         }                                                                            \
     } while (0)
 
+/* 检查小数时允许少量误差。先各算一次实际值、预期值和容差，再用 fabsf 取两数之差的绝对值。 */
 #define TF_CHECK_NEAR(actual, expected, tolerance)                                   \
     do {                                                                             \
         float tf_a_ = (float)(actual);                                               \
@@ -32,6 +37,7 @@ extern int tf_failures;
         }                                                                            \
     } while (0)
 
+/* 比较整数时要求完全相等。这里统一转成 long long，方便用同一种格式打印实际值和预期值。 */
 #define TF_CHECK_INT(actual, expected)                                               \
     do {                                                                             \
         long long tf_a_ = (long long)(actual);                                       \
@@ -58,9 +64,11 @@ int tf_failures = 0;
 
 typedef struct TestSuite {
     const char *name;
+    /* 这是函数指针，保存一个无参数、无返回值的测试函数的地址。 */
     void (*function)(void);
 } TestSuite;
 
+/* 测试程序的入口。命令行不带参数时运行所有组，也可以传 physics 之类的名字只跑其中一组。 */
 int main(int argc, char **argv)
 {
     static const TestSuite suites[] = {
@@ -71,6 +79,7 @@ int main(int argc, char **argv)
         {"score", test_score_suite},
         {"game", test_game_suite}
     };
+    /* argc 包含程序名。只有 argc 大于 1 时才有 argv[1]；问号左右两种取值分别表示有筛选词或没有筛选词。 */
     const char *filter = (argc > 1) ? argv[1] : 0;
     int matched = 0;
     int i;
@@ -80,7 +89,9 @@ int main(int argc, char **argv)
     printf("SnowParkour core tests | %s\n", filter ? filter : "all");
     printf("------------------------------------------------------------\n");
 
+    /* 整个数组占用的字节数除以其中一项的字节数，就得到测试组数。 */
     for (i = 0; i < (int)(sizeof(suites) / sizeof(suites[0])); ++i) {
+        /* strstr 在组名里查找筛选词，找不到时返回空指针。continue 会直接去检查下一组。 */
         if (filter != 0 && strstr(suites[i].name, filter) == 0) {
             continue;
         }
@@ -88,6 +99,7 @@ int main(int argc, char **argv)
         checks_before = tf_checks;
         failures_before = tf_failures;
         printf("[ RUN  ] %s\n", suites[i].name);
+        /* 调用表里保存的函数。结束后用总数减去开跑前的总数，就知道这一组查了多少项、错了几项。 */
         suites[i].function();
         printf("[ %s ] %s  (%d checks, %d failures)\n",
                tf_failures == failures_before ? " OK " : "FAIL",
@@ -105,6 +117,7 @@ int main(int argc, char **argv)
     return (tf_failures == 0) ? 0 : 1;
 }
 
+/* 手动设置角色和按键，每调用一次 move_player 就推进一个时间步。依次检查起跳、二段跳和落地。 */
 void test_physics_suite(void)
 {
     Player player;
@@ -194,6 +207,7 @@ void test_physics_suite(void)
     TF_CHECK_NEAR(player.y, SP_GROUND_Y - SP_PLAYER_H, 0.01f);
 }
 
+/* 先用两个矩形试重叠和擦边，再摆出一个玩家和一个障碍，检查游戏会报告撞到哪一个。 */
 void test_collision_suite(void)
 {
     Aabb a;
@@ -231,6 +245,7 @@ void test_collision_suite(void)
     terrain.segments[0].width = 400.0f;
     terrain.segments[0].obstacle_count = 1;
 
+    /* & 取第一个路段里第一个障碍的地址。下面通过 obstacle->x 赋值，就会改到数组中那个障碍的横坐标。 */
     obstacle = &terrain.segments[0].obstacles[0];
     obstacle->x = 120.0f;
     obstacle->y = 550.0f;
@@ -269,6 +284,7 @@ void test_collision_suite(void)
     TF_CHECK(!collision_check_player(&player, 0, 0));
 }
 
+/* 分别取开局、60 秒和 180 秒的难度来比较，再给过小和过大的时间，检查速度与间距的边界。 */
 void test_difficulty_suite(void)
 {
     DifficultyParams start;
@@ -312,6 +328,7 @@ void test_difficulty_suite(void)
     TF_CHECK(difficulty_level_name(10) != 0);
 }
 
+/* 逐段、逐障碍比对两份地形的关键字段。发现第一处差异就返回 0，全部相符时返回 1。 */
 static int terrain_matches(const Terrain *a, const Terrain *b)
 {
     int i;
@@ -341,6 +358,7 @@ static int terrain_matches(const Terrain *a, const Terrain *b)
     return 1;
 }
 
+/* 用固定随机种子生成道路，检查障碍有没有越过路段、前后两组间距够不够，以及向前滚动后是否补上新路。 */
 void test_terrain_suite(void)
 {
     Terrain terrain;
@@ -374,6 +392,7 @@ void test_terrain_suite(void)
     for (i = 1; i < terrain.segment_count; ++i) {
         const TerrainSegment *previous = &terrain.segments[i - 1];
         const TerrainSegment *current = &terrain.segments[i];
+        /* 数组从 0 开始计数，上一段最后一个障碍的下标是障碍数减 1。用它的右边缘到本段首个障碍左边缘的距离算空隙。 */
         const Obstacle *last = &previous->obstacles[previous->obstacle_count - 1];
         const Obstacle *first = &current->obstacles[0];
         TF_CHECK(first->x - (last->x + last->w) >= 250.0f);
@@ -383,7 +402,7 @@ void test_terrain_suite(void)
     terrain_init(&copy, 12345u, SP_GROUND_Y, &difficulty);
     TF_CHECK(terrain_matches(&terrain, &copy));
 
-    /* 移动 5000px，确认回收后数量受控且仍然一致。 */
+    /* 让两份相同地形按相同速度连续滚动 300 步，检查路段数量，最后再比对它们。 */
     copy = terrain;
     for (i = 0; i < 300; ++i) {
         float t = (float)i * SP_FIXED_DT;
@@ -438,6 +457,7 @@ void test_terrain_suite(void)
     TF_CHECK(terrain_obstacle_count(&terrain) > 0);
 }
 
+/* 用已知距离与时间验算分数，再分别测试未破纪录、破纪录和重开一局时的最高分。 */
 void test_score_suite(void)
 {
     ScoreState score;
@@ -489,6 +509,7 @@ void test_score_suite(void)
     TF_CHECK_INT(score.high_score, SP_HIGH_SCORE_LIMIT);
 }
 
+/* 找出角色前面或正在经过的最近障碍，并估算越过它所在这一组还需要的宽度和高度。找到时返回 1。 */
 static int nearest_obstacle_dx(const GameState *state, float *out_dx, float *out_width,
                                float *out_height)
 {
@@ -529,6 +550,7 @@ static int nearest_obstacle_dx(const GameState *state, float *out_dx, float *out
                 highest = segment->obstacles[j].h;
             }
         }
+        /* 三个 out 参数都是调用者给的地址。在 *out_dx 上赋值，就把算出的距离填回调用者的 dx，另外两个同理。 */
         *out_dx = best;
         *out_width = rightmost - nearest_x;
         *out_height = highest;
@@ -536,6 +558,7 @@ static int nearest_obstacle_dx(const GameState *state, float *out_dx, float *out
     return found;
 }
 
+/* 让测试程序代替玩家按空格。每次先估算何时起跳，再用真实游戏的更新函数推进一步，直到跑完或撞上障碍。 */
 static void run_autoplay(GameState *state, int total_steps, int *steps_run)
 {
     int i;
@@ -552,11 +575,13 @@ static void run_autoplay(GameState *state, int total_steps, int *steps_run)
             const float jump_speed = 880.0f;
             const float gravity = 2100.0f;
             float target_height = obstacle_height + 12.0f;
+            /* 在纸上把向上当正方向：高度 = 起跳速度 × 时间 − 重力 × 时间² / 2。令高度等于障碍高度再加余量，得到一元二次方程。 */
             float discriminant = jump_speed * jump_speed - 2.0f * gravity * target_height;
             float t_fall = (2.0f * jump_speed) / gravity;
             float player_box_width = SP_PLAYER_W - 10.0f;
             float max_jump_dx;
 
+            /* 判别式为正时有两个时刻会经过目标高度；取加号的那个根，就是角色开始下落后再次经过这个高度的时刻。 */
             if (discriminant > 0.0f) {
                 t_fall = (jump_speed + sqrtf(discriminant)) / gravity;
             }
@@ -564,10 +589,12 @@ static void run_autoplay(GameState *state, int total_steps, int *steps_run)
             if (t_fall < 0.08f) {
                 t_fall = 0.08f;
             }
+            /* 用道路速度乘以上面的可用时间，估算能横跨的距离，再扣掉玩家宽度、整组障碍宽度和 8 像素余量。 */
             max_jump_dx = state->world_speed * t_fall - player_box_width - obstacle_width - 8.0f;
             if (max_jump_dx < 45.0f) {
                 max_jump_dx = 45.0f;
             }
+            /* 还在地面、与障碍相隔超过 10 像素，且距离已经进入可跳过的范围，这一步才模拟按空格。 */
             if (state->player.on_ground && dx > 10.0f && dx < max_jump_dx) {
                 input.jump_pressed = true;
                 jump_count += 1;
@@ -599,6 +626,7 @@ static void run_autoplay(GameState *state, int total_steps, int *steps_run)
     }
 }
 
+/* 用同一套 game_update 串起开局、暂停、碰撞、结算和重开，最后再让自动玩家跑一局。 */
 void test_game_suite(void)
 {
 
@@ -683,6 +711,7 @@ void test_game_suite(void)
         for (i = 0; i < 600; ++i) {
             game_update(input);
         }
+        /* 结构体赋值会复制各字段，包括当前存储在结构体里的路段数组。留好第一局的快照，再用同一种子重新开局对照。 */
         a = game;
         game_init(0xABCDEF01u);
         for (i = 0; i < 600; ++i) {
