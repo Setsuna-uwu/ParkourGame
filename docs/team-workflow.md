@@ -27,13 +27,13 @@
 1. 登录自己的 GitHub 账号，接受组长从仓库 Settings → Collaborators 发来的邀请。
 2. 安装 [GitHub Desktop](https://desktop.github.com/download/)，用同一账号登录。游戏构建选一种编译器即可：将 x64 MinGW-w64 的 gcc 和 g++ 加入 PATH，或在 Visual Studio Installer 中安装“使用 C++ 的桌面开发”。详细入口见[项目首页](../README.md)。
 3. Desktop 点 File → Clone repository → URL，填 https://github.com/Setsuna-uwu/ParkourGame.git，选好本地目录，点 Clone。已有带 .git 的克隆就点 File → Add local repository 选现成目录。下载的 ZIP 解压目录另存，之后用克隆目录工作。
-4. Repository → Show in Explorer 打开文件夹，双击 scripts 里的 run.bat。第一次等它编译，看见游戏并能跳跃、重开，就具备了开工条件。脚本一闪即退，可以在项目目录打开 PowerShell，输入下方运行命令看完整报错。
+4. Repository → Show in Explorer 打开文件夹，双击根目录的 run.bat。第一次等它编译，看见地面线和方块、能用 Esc 退出，就具备了开工条件。脚本一闪即退，可以在项目目录打开 PowerShell，输入下方运行命令看完整报错。
 
 ## 收到任务后，可以交给 AI 操作
 
 把 QQ 任务原文和以下这段一起发给能操作本地项目的 AI：
 
-> 在本机 ParkourGame 克隆里做这项任务。先确认仓库、当前分支、工作区和远端最新 main；保留我未提交的其他工作。查本任务有无打开的 PR，有就用它的来源分支继续；新任务从最新 main 单开分支。只修改验收所需文件。代码改完运行 scripts/test.bat Debug，告诉我怎么启动并试玩成功和失败两种情况。文档任务检查内容和链接。让我知道验证结果，再把本任务改动 commit、push，创建或更新到 main 的 PR，把 PR 链接和待验证事项给我。留给组长合并。
+> 在本机 ParkourGame 克隆里做这项任务。先确认仓库、当前分支、工作区和远端最新 main；保留我未提交的其他工作。查本任务有无打开的 PR，有就用它的来源分支继续；新任务从最新 main 单开分支。只修改验收所需文件。改完运行根目录 run.bat，按本 Issue 的步骤验证成功和失败两种情况，把实际试玩结果写进 PR。文档任务检查内容和链接。让我知道验证结果，再把本任务改动 commit、push，创建或更新到 main 的 PR，把 PR 链接和待验证事项给我。留给组长合并。
 
 本人至少试玩自己的改动一次，能说清改了哪里、怎样验证。AI 没有推送权限时，在自己的 Desktop 里完成下面的提交步骤即可。
 
@@ -41,10 +41,9 @@
 
 1. **拿最新版。** Desktop 顶部 Current branch 选 main，点 Fetch origin；若随后显示 Pull origin，再点一下。若 Changes 有没保存进 Git 的旧工作，先把它留在原任务分支，拿不准就截屏问组长。
 2. **进入自己的任务分支。** 新任务点 Current branch → New branch，名字写任务，例如 fix/jump-input，基于 main 创建。组长退回的旧任务直接选原来的分支。
-3. **在这个目录里写。** 用编辑器打开刚才克隆的文件夹。代码改完双击 scripts/run.bat 试玩，再运行核心测试。在项目目录 PowerShell 执行：
+3. **在这个目录里写。** 用编辑器打开刚才克隆的文件夹。代码改完双击根目录 run.bat 试玩。在项目目录 PowerShell 执行：
    ~~~powershell
-   .\scripts\run.bat
-   .\scripts\test.bat Debug
+   .\run.bat
    ~~~
 4. **保存并上传。** 切回 Desktop，在 Changes 勾选本次要交的文件，左下 Summary 写具体改动，点 Commit to 当前任务分支。第一次上传点 Publish branch，以后点 Push origin。Commit 只保存到本机，Push 后队友才看得到。
 5. **发起 PR。** 在仓库网页 Pull requests → New pull request，base 选 main，compare 选你的任务分支，核对文件后 Create pull request。写怎么验，复制此页链接发 QQ。有 GitHub Desktop 的预览 PR 按钮也可以从那里进入。
@@ -81,7 +80,7 @@ git push -u origin fix/jump-input   # 首推，建立本地与远端分支的对
 
 ## 课设和分工
 
-老师要求三至四人一组，小组人均有效代码量至少 200 行。本组三人至少 600 行；每人认领能独立解释的实际改动。现成原型当共同起点，记录实际作者与贡献。第三方库、机器生成的任务单和来回格式化不拿来凑数。PR 方便查工作记录，Git 增删行数本身不能认定有效代码。
+老师要求三至四人一组，小组人均有效代码量至少 200 行。本组三人至少 600 行；每人认领能独立解释的实际改动。此开工版当共同起点，记录实际作者与贡献。第三方库、机器生成的任务单和来回格式化不拿来凑数。PR 方便查工作记录，Git 增删行数本身不能认定有效代码。
 
 可派的三类任务是滑行与落地（能在不同坡面起跳、落地）、随机地形（沟和障碍按当前速度可通过）、单局流程（拾取额外生命、摔倒扣命、结算与重开）。具体负责人以 QQ 派单为准。每人都负责实际程序、验证和报告里对应的一节；改公共结构体前先发群里对齐字段和用途。先把一小段跑通，再扩内容，最后一轮集中做验收。
 
