@@ -1,107 +1,53 @@
-/*
- * 雪原跑酷 - 游戏入口和固定时间步主循环。
- * 本文件是纯 C，不包含 EasyX 头文件；平台差异全部在 platform/ 内。
- */
-#include <stdint.h>
+#include "game.h"
 
-#include "core/config.h"
-#include "core/game.h"
-#include "core/score.h"
-#include "platform/platform.h"
-
+/* 一次循环走一步。每秒约走 60 步，跳跃和障碍都按这个节奏计算。 */
 int main(void)
 {
-    Platform platform;
-    GameState state;
-    Input input;
-    int loaded_high_score = 0;
-    double last_time;
-    double accumulator = 0.0;
-    double fps = (double)SP_TARGET_FPS;
-    const double frame_interval = 1.0 / (double)SP_TARGET_FPS;
-    const double fixed_step = (double)SP_FIXED_DT;
+    Platform window;
+    Input keys;
+    int record = 0;
+    double next_frame;
+    double last_frame;
+    double fps = SP_TARGET_FPS;
 
     platform_crt_init();
-
-    if (!platform_init(&platform, L"雪原跑酷  ·  C 项目", SP_SCREEN_WIDTH, SP_SCREEN_HEIGHT)) {
+    if (!platform_init(&window, L"雪原跑酷", SP_SCREEN_WIDTH, SP_SCREEN_HEIGHT)) {
         return 1;
     }
-
-    game_init(&state, 0x5EED2026u);
-    if (platform_storage_load_highscore(&loaded_high_score)) {
-        score_set_high_score(&state.score, loaded_high_score);
+    game_init(0x5EED2026u);
+    if (platform_storage_load_highscore(&record)) {
+        score_set_high_score(&game.score, record);
     }
 
-    last_time = platform_now_seconds(&platform);
-
-    while (!state.quit_requested && !platform_should_quit(&platform)) {
-        double frame_start;
-        double now;
-        double frame_time;
-        double frame_end;
-        int steps = 0;
-
-        frame_start = platform_now_seconds(&platform);
-        platform_pump(&platform);
-        platform_poll_input(&platform, &input);
-
-        now = platform_now_seconds(&platform);
-        frame_time = now - last_time;
-        last_time = now;
-        if (frame_time < 0.0) {
-            frame_time = 0.0;
+    next_frame = platform_now_seconds(&window);
+    last_frame = next_frame;
+    while (!game.quit_requested && !platform_should_quit(&window)) {
+        double now = platform_now_seconds(&window);
+        if (now - last_frame > 0.001) {
+            fps += 0.1 * (1.0 / (now - last_frame) - fps);
         }
-        if (frame_time > 0.25) {
-            frame_time = 0.25;
-        }
-        if (frame_time > 0.0001) {
-            double instant_fps = 1.0 / frame_time;
-            if (instant_fps > 1000.0) {
-                instant_fps = 1000.0;
-            }
-            fps = fps * 0.90 + instant_fps * 0.10;
-        }
+        last_frame = now;
 
-        accumulator += frame_time;
-
-        {
-            Input step_input = input;
-            while (accumulator >= fixed_step && steps < 8) {
-                game_update(&state, &step_input);
-                input_clear_edges(&step_input);
-                accumulator -= fixed_step;
-                steps += 1;
-                if (state.quit_requested) {
-                    break;
-                }
-            }
-            if (steps >= 8) {
-                /* 长时间卡顿后丢弃积压，避免追帧雪崩。 */
-                accumulator = 0.0;
-            }
-        }
-
-        if (state.score.high_score_dirty) {
-            platform_storage_save_highscore(state.score.high_score);
-            state.score.high_score_dirty = false;
-        }
-
-        platform_render(&platform, &state, fps);
-        platform_present(&platform);
-
-        if (state.quit_requested) {
+        /* &keys 是变量的地址，读键函数往这个变量里填结果。 */
+        platform_poll_input(&window, &keys);
+        if (platform_should_quit(&window)) {
             break;
         }
-
-        frame_end = platform_now_seconds(&platform);
-        {
-            double used = frame_end - frame_start;
-            if (used < frame_interval) {
-                platform_sleep_seconds(frame_interval - used);
-            }
+        game_update(keys);
+        if (game.score.high_score_dirty) {
+            game.score.high_score_dirty = !platform_storage_save_highscore(game.score.high_score);
         }
-    }
+        platform_render(&window, &game, fps);
+        platform_present(&window);
 
-    platform_shutdown(&platform);
+        /* 到点再画下一帧。拖动窗口等长时间卡顿后从当前时间接着走。 */
+        next_frame += SP_FIXED_DT;
+        now = platform_now_seconds(&window);
+        if (now - next_frame > 8 * SP_FIXED_DT) {
+            next_frame = now;
+        }
+        platform_sleep_seconds(next_frame - now);
+    }
+    platform_shutdown(&window);
     return 0;
 }

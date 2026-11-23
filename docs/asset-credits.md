@@ -8,10 +8,8 @@
 |---|---|---|
 | EasyX 图形库 | EasyX 官方 26.10.25 | 免费使用；版权归 EasyX 作者 |
 | 游戏画面 | 项目内 EasyX 几何图元程序化绘制 | 本项目产物 |
-| 应用图标 | 项目内程序化生成 | 本项目产物 |
 | 字体 | Windows 系统自带 `Microsoft YaHei UI` | 随 Windows 使用 |
 | 音频 | 无 | MVP 明确不做 |
-| 截图 | 本项目实际运行画面 | 本项目产物 |
 
 ## 2. EasyX
 
@@ -47,7 +45,7 @@ E53B8FC22D6C377DC38DE809CE3B066B7FD3C3A5ACB64141280352B52E87864D  include/graphi
 
 ## 3. 程序化美术
 
-所有场景元素均由 `src/platform/render_easyx.cpp` 使用 EasyX 图元绘制：
+所有场景元素均由 `src/draw.cpp` 使用 EasyX 图元绘制：
 
 - 夜空渐变、星、月、三层视差雪山、松林；
 - 雪地、土层、石块、障碍；
@@ -56,7 +54,6 @@ E53B8FC22D6C377DC38DE809CE3B066B7FD3C3A5ACB64141280352B52E87864D  include/graphi
 
 没有从网络抓取图片，也没有使用游戏素材包。
 
-应用图标 `assets/icon.ico` 由项目内的 Pillow 脚本绘制（夜空、山、松、围巾跑者），再缩放为 16–256 px 多尺寸 ICO。预览见 `docs/icon-preview.png`。
 
 ## 4. 字体
 
@@ -68,15 +65,10 @@ settextstyle(..., L"Microsoft YaHei UI", ...);
 
 该字体是 Windows 10/11 自带字体，不随项目分发字体文件。若目标系统缺少该字体，EasyX/Windows 会回退到系统默认 UI 字体。
 
-## 5. 截图
-
-`docs/screenshot.png`、`docs/screenshot-gameover.png`、`docs/screenshot-pause.png`、`docs/screenshot-debug.png` 是对本项目可执行文件窗口的截图，包含项目自己的画面和 HUD。
-
-## 6. 第三方工具（仅构建期）
+## 5. 第三方工具（仅构建期）
 
 - CMake
 - Visual Studio / MSVC
 - Windows SDK
-- Pillow（仅用于生成图标）
 
 这些工具不进入最终游戏资源目录。
