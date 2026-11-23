@@ -40,6 +40,7 @@ extern "C" {
 #define COL_DEBUG_PLAYER RGB(255, 82, 82)
 #define COL_DEBUG_OBSTACLE RGB(255, 224, 76)
 
+/* 这里的 static 表示函数只在 draw.cpp 内使用。把数值限制在两个端点之间，后面的调色和阴影都要用。 */
 static float clampf(float value, float min_value, float max_value)
 {
     if (value < min_value) {
@@ -51,11 +52,13 @@ static float clampf(float value, float min_value, float max_value)
     return value;
 }
 
+/* 游戏坐标带小数，画图需要整像素。lroundf 取最近的整数，再转成 EasyX 使用的 int。 */
 static int iround(float value)
 {
     return (int)lroundf(value);
 }
 
+/* COLORREF 保存一种颜色。分别算红、绿、蓝三个分量；t 为 0 时取 a，为 1 时取 b，中间各取一部分。 */
 static COLORREF blend_color(COLORREF a, COLORREF b, float t)
 {
     int r;
@@ -68,13 +71,16 @@ static COLORREF blend_color(COLORREF a, COLORREF b, float t)
     return RGB(r, g, bl);
 }
 
+/* 设置后续文字的字号和字重。L 开头的字符串存宽字符，便于传中文给 Windows。 */
 static void set_font(int height, bool bold)
 {
+    /* 条件 ? 甲 : 乙 是一个表达式：bold 为真选粗体，为假选常规字重。 */
     settextstyle(height, 0, L"Microsoft YaHei UI", 0, 0,
                  bold ? FW_BOLD : FW_NORMAL, false, false, false);
     setbkmode(TRANSPARENT);
 }
 
+/* 将文字左上角放在 (x, y)。const wchar_t *text 指向字符串的开头，函数只读取它。 */
 static void text_left(int x, int y, int height, COLORREF color, const wchar_t *text, bool bold)
 {
     set_font(height, bold);
@@ -82,6 +88,7 @@ static void text_left(int x, int y, int height, COLORREF color, const wchar_t *t
     outtextxy(x, y, text);
 }
 
+/* 先选定字体、量出整行的像素宽度，再从中心向左退半行宽作为起点。 */
 static void text_center(int center_x, int y, int height, COLORREF color, const wchar_t *text, bool bold)
 {
     int width;
@@ -91,6 +98,7 @@ static void text_center(int center_x, int y, int height, COLORREF color, const w
     outtextxy(center_x - width / 2, y, text);
 }
 
+/* 先在右下方画一层暗色阴影，再在原位置画圆角底板和边框。 */
 static void draw_panel(int x, int y, int width, int height, COLORREF fill, COLORREF border)
 {
     setfillcolor(RGB(4, 7, 15));
@@ -103,8 +111,10 @@ static void draw_panel(int x, int y, int width, int height, COLORREF fill, COLOR
     setlinestyle(PS_SOLID, 1);
 }
 
+/* 把编号打散成一个可重复的无符号数。同一颗星每帧算出同一个位置，画面就不会闪。 */
 static unsigned int hash32(unsigned int value)
 {
+    /* >> 16 把原数的位向右移 16 位，^= 把移位结果和原数逐位异或后写回。后缀 u 表示无符号整数。 */
     value ^= value >> 16;
     value *= 0x7FEB352Du;
     value ^= value >> 15;
@@ -117,6 +127,7 @@ static unsigned int hash32(unsigned int value)
 /* 背景                                                                */
 /* ------------------------------------------------------------------ */
 
+/* 从屏幕顶部向下，每 6 个像素画一个色带；上半段和下半段各自在两种颜色之间过渡。 */
 static void draw_sky(int width, int height)
 {
     int y;
@@ -135,6 +146,7 @@ static void draw_sky(int width, int height)
     }
 }
 
+/* 依次用 96 个编号生成星点。用余数把坐标限制在天空范围内。 */
 static void draw_stars(int width)
 {
     int i;
@@ -142,6 +154,7 @@ static void draw_stars(int width)
         unsigned int h = hash32((unsigned int)i * 2654435761u + 17u);
         int x = (int)(h % (unsigned int)width);
         int y = (int)((h >> 9) % 330u) + 18;
+        /* 右移后用 & 1u 取最低一位，把半径分成两种。下一行用 & 3u 取两位来挑颜色。 */
         int radius = ((h >> 21) & 1u) ? 1 : 2;
         COLORREF color = ((h >> 23) & 3u) == 0u ? RGB(255, 227, 174) : RGB(205, 224, 250);
         setfillcolor(blend_color(COL_SKY_MID, color, 0.65f));
@@ -149,6 +162,7 @@ static void draw_stars(int width)
     }
 }
 
+/* 从大到小叠圆形成月晕，最后画明亮的月面和上面的小圆斑。 */
 static void draw_moon(void)
 {
     int i;
@@ -164,11 +178,13 @@ static void draw_moon(void)
     solidcircle(1052, 106, 3);
 }
 
+/* 一排山按 period 像素重复。每座山由山体和雪顶两个三角形组成。 */
 static void draw_mountain_layer(int width, int base_y, float offset, float period, float peak_height,
                                 COLORREF body, COLORREF cap)
 {
     float x;
 
+    /* fmodf 求小数余数：即使已经跑了很远，也只需要知道当前这一个周期内的偏移。 */
     offset = fmodf(offset, period);
     if (offset < 0.0f) {
         offset += period;
@@ -179,6 +195,7 @@ static void draw_mountain_layer(int width, int base_y, float offset, float perio
         float peak_y = (float)base_y - peak_height;
         float cap_drop = peak_height * 0.30f;
         float half_at_cap = period * 0.25f * (cap_drop / peak_height);
+        /* POINT 是 Windows 的整数坐标点。数组里三个点依次交给 solidpolygon，就能填满三角形。 */
         POINT mountain[3];
         POINT snow_cap[3];
 
@@ -203,6 +220,7 @@ static void draw_mountain_layer(int width, int base_y, float offset, float perio
     }
 }
 
+/* 以 (x, base_y) 为树根，先画树干，再按树高画三层三角形枝叶和积雪。 */
 static void draw_pine(int x, int base_y, int height, COLORREF color)
 {
     POINT lower[3];
@@ -244,6 +262,7 @@ static void draw_pine(int x, int base_y, int height, COLORREF color)
     setlinestyle(PS_SOLID, 1);
 }
 
+/* 每 176 像素摆一棵树，树列只随跑动距离移动 34%，看起来位于跑道后方。 */
 static void draw_forest(float distance, int width, int base_y)
 {
     float offset = fmodf(distance * 0.34f, 176.0f);
@@ -259,6 +278,7 @@ static void draw_forest(float distance, int width, int base_y)
 /* 地面与装饰                                                          */
 /* ------------------------------------------------------------------ */
 
+/* 画出雪面和下方土层。state 是指向当前游戏状态的指针，state->ground_y 读出其中的地面高度。 */
 static void draw_ground(const GameState *state)
 {
     int width = state->screen_width;
@@ -301,6 +321,7 @@ static void draw_ground(const GameState *state)
     line(0, ground + 102, width, ground + 102);
 }
 
+/* 把雪盖石块当作路边装饰，按跑动距离平移。这里算出的坐标只用于画图。 */
 static void draw_ground_decor(float distance, int width, int ground)
 {
     float offset = fmodf(distance, 240.0f);
@@ -322,6 +343,7 @@ static void draw_ground_decor(float distance, int width, int ground)
 /* 障碍物                                                              */
 /* ------------------------------------------------------------------ */
 
+/* 根据障碍的横坐标和宽度，在它正下方画一条略宽的椭圆阴影。 */
 static void draw_obstacle_shadow(const Obstacle *obstacle, int ground)
 {
     setfillcolor(RGB(151, 172, 199));
@@ -329,6 +351,7 @@ static void draw_obstacle_shadow(const Obstacle *obstacle, int ground)
                  iround(obstacle->x + obstacle->w) + 4, ground + 4);
 }
 
+/* 用大三角形画冰锥轮廓，再叠一个浅色三角形表现光照。 */
 static void draw_spike(const Obstacle *obstacle, int ground)
 {
     POINT outer[3];
@@ -367,6 +390,7 @@ static void draw_spike(const Obstacle *obstacle, int ground)
     solidellipse(x + w / 2 - 6, y + h / 3, x + w / 2 + 4, y + h / 3 + 5);
 }
 
+/* 先填木箱的矩形，再用斜线画木板支架，最后盖上箱顶的积雪。 */
 static void draw_crate(const Obstacle *obstacle, int ground)
 {
     int x = iround(obstacle->x);
@@ -391,6 +415,7 @@ static void draw_crate(const Obstacle *obstacle, int ground)
     solidrectangle(x - 2, y + 1, x + w + 3, y + 5);
 }
 
+/* 按障碍顶端和地面位置确定冰柱的高度，再叠加亮面、裂纹和顶端积雪。 */
 static void draw_tall_ice(const Obstacle *obstacle, int ground)
 {
     int x = iround(obstacle->x);
@@ -411,6 +436,7 @@ static void draw_tall_ice(const Obstacle *obstacle, int ground)
     solidellipse(x - 3, y - 7, x + w + 4, y + 6);
 }
 
+/* 用宽矩形画冰墙，每隔一段换一种蓝色，形成四条明暗相间的竖纹。 */
 static void draw_wide_barrier(const Obstacle *obstacle, int ground)
 {
     int x = iround(obstacle->x);
@@ -433,9 +459,11 @@ static void draw_wide_barrier(const Obstacle *obstacle, int ground)
     setlinestyle(PS_SOLID, 1);
     setfillcolor(COL_SNOW);
     solidellipse(x - 2, y - 6, x + w + 2, y + 5);
+    /* 把 h 转成 void 表示有意忽略这个局部变量，它不参与绘制。 */
     (void)h;
 }
 
+/* 外层遍历路段，内层遍历这一段里的障碍。先画阴影，再按类型挑选画法。 */
 static void draw_obstacles(const GameState *state)
 {
     int ground = (int)state->ground_y;
@@ -444,6 +472,7 @@ static void draw_obstacles(const GameState *state)
 
     for (i = 0; i < state->terrain.segment_count; ++i) {
         const TerrainSegment *segment = &state->terrain.segments[i];
+        /* 整段在屏幕右边或左边 80 像素以外时，continue 直接跳去检查下一段。 */
         if (segment->x > (float)state->screen_width + 80.0f ||
             segment->x + segment->width < -80.0f) {
             continue;
@@ -475,6 +504,7 @@ static void draw_obstacles(const GameState *state)
 /* 玩家                                                                */
 /* ------------------------------------------------------------------ */
 
+/* 用地面高度减去脚底坐标得到离地高度。跳得越高，影子越小，缩到设定的下限就停止。 */
 static void draw_player_shadow(const GameState *state)
 {
     const Player *player = &state->player;
@@ -490,6 +520,7 @@ static void draw_player_shadow(const GameState *state)
                  iround(state->ground_y) + height / 2);
 }
 
+/* 把玩家位置当作人物左上角，各部位都相对它定位。手脚摆动只影响外观。 */
 static void draw_player(const GameState *state)
 {
     const Player *player = &state->player;
@@ -498,6 +529,7 @@ static void draw_player(const GameState *state)
     int ground = iround(state->ground_y);
     bool air = !player->on_ground;
     bool dead = (state->phase == GAME_PHASE_GAME_OVER);
+    /* sinf 让 swing 在 -1 和 1 之间往复；两脚用相反的偏移，跑起来就会交替迈步。 */
     float swing = sinf(player->run_phase);
     int hip_x = x + 21;
     int hip_y = y + 46;
@@ -608,6 +640,7 @@ static void draw_player(const GameState *state)
 /* HUD / 覆盖层                                                        */
 /* ------------------------------------------------------------------ */
 
+/* 把分数、距离、速度和按键提示画在游戏场景上。这些一直看得见的信息叫 HUD。 */
 static void draw_hud(const GameState *state)
 {
     wchar_t buffer[128];
@@ -615,6 +648,7 @@ static void draw_hud(const GameState *state)
 
     draw_panel(26, 24, 360, 128, COL_PANEL, COL_PANEL_EDGE);
     text_left(46, 38, 17, COL_MUTED, L"分数", false);
+    /* 把整数写进宽字符数组再画出来。%06d 表示至少占六位，不足时左边补 0。 */
     swprintf_s(buffer, 128, L"%06d", state->score.current);
     text_left(44, 55, 45, COL_TEXT, buffer, true);
     text_left(240, 40, 16, COL_MUTED, L"最高分", false);
@@ -650,6 +684,7 @@ static void draw_hud(const GameState *state)
                 L"SPACE 跳跃 / 二段跳     P 暂停     R 重开     F1 调试     ESC 退出", false);
 }
 
+/* 把暂停面板叠在屏幕中心，坐标都从中心 (cx, cy) 往外计算。 */
 static void draw_pause_overlay(const GameState *state)
 {
     int cx = state->screen_width / 2;
@@ -665,6 +700,7 @@ static void draw_pause_overlay(const GameState *state)
     text_center(cx, cy + 82, 15, COL_MUTED, L"ESC 退出游戏", false);
 }
 
+/* 在结算面板上显示本局得分和纪录，再提示重开；提示的颜色随结束后的时间变化。 */
 static void draw_game_over_overlay(const GameState *state)
 {
     int cx = state->screen_width / 2;
@@ -672,6 +708,7 @@ static void draw_game_over_overlay(const GameState *state)
     wchar_t buffer[128];
     COLORREF prompt_color;
 
+    /* 正弦的范围是 -1 到 1，乘以 0.5 再加 0.5 就得到调色所需的 0 到 1。 */
     prompt_color = blend_color(COL_TEXT, COL_ACCENT,
                                0.5f + 0.5f * sinf(state->death_time * 4.0f));
 
@@ -698,6 +735,7 @@ static void draw_game_over_overlay(const GameState *state)
     text_center(cx, cy + 148, 14, COL_MUTED, L"ESC 退出游戏", false);
 }
 
+/* 把游戏状态枚举换成中文文字，供调试面板直接显示。 */
 static const wchar_t *phase_label(GamePhase phase)
 {
     switch (phase) {
@@ -712,7 +750,9 @@ static const wchar_t *phase_label(GamePhase phase)
     }
 }
 
+/* 编译时开关。只有 SP_DEBUG_HUD 的值非零，编译器才会把下面的调试绘制函数编进程序。 */
 #if SP_DEBUG_HUD
+/* 用碰撞函数算出实际判定框：红框是角色，黄框是障碍。右侧面板列出同一帧的运行数据。 */
 static void draw_debug_overlay(const GameState *state, double fps)
 {
     int i;
@@ -793,6 +833,7 @@ static void draw_debug_overlay(const GameState *state, double fps)
 /* 对外渲染入口                                                        */
 /* ------------------------------------------------------------------ */
 
+/* main.c 每帧调用一次。按天空、远景、地面、角色、面板的顺序画，后画的图形会盖住先画的部分。 */
 extern "C" void platform_render(Platform *platform, const GameState *state, double fps)
 {
     if (platform == 0 || state == 0 || !platform->initialized) {
@@ -806,6 +847,7 @@ extern "C" void platform_render(Platform *platform, const GameState *state, doub
     draw_stars(state->screen_width);
     draw_moon();
 
+    /* 同一段路程乘不同的系数，远山移动少、近山移动多，看起来就有远近层次。 */
     draw_mountain_layer(state->screen_width, 590, state->distance_px * 0.07f, 410.0f, 186.0f,
                         RGB(50, 68, 105), RGB(168, 190, 220));
     draw_mountain_layer(state->screen_width, 616, state->distance_px * 0.14f, 300.0f, 116.0f,
