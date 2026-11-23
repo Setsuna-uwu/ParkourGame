@@ -30,6 +30,8 @@ exit /b 2
 :ready
 call "%SCRIPT_DIR%build.bat" %CONFIG% || exit /b 1
 
+cmake --build "%SCRIPT_DIR%..\build" --config %CONFIG% --target sp_tests || exit /b 1
+
 if /I "%CONFIG%"=="Debug" (
     call "%SCRIPT_DIR%_debug_env.bat" || exit /b 1
 )

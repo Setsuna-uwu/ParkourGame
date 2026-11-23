@@ -22,10 +22,10 @@ if not exist "third_party\easyx\include\easyx.h" (
 
 call :find_vs
 if errorlevel 1 (
-    echo [build] Visual Studio with the C++ x64 toolchain was not found.
-    echo [build] Install "Desktop development with C++" and retry.
-    popd
-    exit /b 1
+    where g++ >nul 2>&1 || exit /b 1
+    where ninja >nul 2>&1 || exit /b 1
+    cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ || exit /b 1
+    goto compile
 )
 
 set "GENERATOR="
@@ -40,15 +40,9 @@ if not defined GENERATOR (
 
 echo [build] config=%CONFIG%  generator=%GENERATOR%
 
-if exist "build\CMakeCache.txt" (
-    findstr /C:"CMAKE_GENERATOR:INTERNAL=Ninja" "build\CMakeCache.txt" >nul 2>&1
-    if not errorlevel 1 (
-        echo [build] stale Ninja build directory detected; removing build\
-        rmdir /s /q "build"
-    )
-)
 
 cmake -S . -B build -G "%GENERATOR%" -A x64 || goto :fail
+:compile
 cmake --build build --config %CONFIG% --parallel || goto :fail
 
 echo [build] OK -^> build\%CONFIG%\SnowParkour.exe

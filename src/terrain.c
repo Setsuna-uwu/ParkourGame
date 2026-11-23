@@ -1,5 +1,4 @@
-#include "core/terrain.h"
-
+#include "game.h"
 #include <string.h>
 
 typedef struct PatternDef {
@@ -81,43 +80,27 @@ static int choose_pattern(Rng *rng, float hard_weight)
 
 static void terrain_spawn_segment(Terrain *terrain, const DifficultyParams *difficulty)
 {
-    TerrainSegment *segment;
-    const PatternDef *pattern;
-    int pattern_index;
-    int i;
+    /* 先在局部变量里拼好一段路，再放到路段数组的末尾。 */
+    TerrainSegment segment = {0};
+    int index = choose_pattern(&terrain->rng, difficulty->hard_weight);
+    PatternDef pattern = PATTERNS[index];
     float gap;
     int jitter;
+    int i;
 
-    if (terrain == 0 || difficulty == 0) {
-        return;
+    segment.x = terrain->next_x;
+    segment.width = pattern.width;
+    segment.pattern = index;
+    segment.obstacle_count = pattern.count;
+    for (i = 0; i < pattern.count; ++i) {
+        Obstacle block;
+        block.type = pattern.types[i];
+        obstacle_dimensions(block.type, &block.w, &block.h);
+        block.x = segment.x + pattern.offsets[i];
+        block.y = terrain->ground_y - block.h;
+        segment.obstacles[i] = block;
     }
-    if (terrain->segment_count >= SP_TERRAIN_MAX_SEGMENTS) {
-        return;
-    }
-
-    pattern_index = choose_pattern(&terrain->rng, difficulty->hard_weight);
-    pattern = &PATTERNS[pattern_index];
-    segment = &terrain->segments[terrain->segment_count];
-    memset(segment, 0, sizeof(*segment));
-
-    segment->x = terrain->next_x;
-    segment->width = pattern->width;
-    segment->pattern = pattern_index;
-    segment->obstacle_count = pattern->count;
-
-    for (i = 0; i < pattern->count; ++i) {
-        float width;
-        float height;
-        Obstacle *obstacle = &segment->obstacles[i];
-
-        obstacle_dimensions(pattern->types[i], &width, &height);
-        obstacle->x = segment->x + pattern->offsets[i];
-        obstacle->y = terrain->ground_y - height;
-        obstacle->w = width;
-        obstacle->h = height;
-        obstacle->type = (uint8_t)pattern->types[i];
-    }
-
+    terrain->segments[terrain->segment_count] = segment;
     terrain->segment_count += 1;
     terrain->generated += 1;
 
@@ -126,18 +109,14 @@ static void terrain_spawn_segment(Terrain *terrain, const DifficultyParams *diff
     if (gap < 260.0f) {
         gap = 260.0f;
     }
-    terrain->next_x = segment->x + segment->width + gap;
+    terrain->next_x = segment.x + segment.width + gap;
 }
 
 static void terrain_fill_ahead(Terrain *terrain, const DifficultyParams *difficulty)
 {
     while (terrain->segment_count < SP_TERRAIN_MAX_SEGMENTS &&
            terrain->next_x < (float)SP_SCREEN_WIDTH + SP_TERRAIN_AHEAD) {
-        int before = terrain->segment_count;
         terrain_spawn_segment(terrain, difficulty);
-        if (terrain->segment_count == before) {
-            break;
-        }
     }
 }
 
@@ -174,8 +153,10 @@ void terrain_scroll(Terrain *terrain, float dx, const DifficultyParams *difficul
 
     while (terrain->segment_count > 0 &&
            terrain->segments[0].x + terrain->segments[0].width < SP_TERRAIN_RECYCLE_X) {
-        memmove(&terrain->segments[0], &terrain->segments[1],
-                sizeof(TerrainSegment) * (size_t)(terrain->segment_count - 1));
+        /* 第 0 段已经滚出画面，后面的路段依次向前挪一个位置。 */
+        for (i = 1; i < terrain->segment_count; ++i) {
+            terrain->segments[i - 1] = terrain->segments[i];
+        }
         terrain->segment_count -= 1;
     }
 
@@ -194,4 +175,50 @@ int terrain_obstacle_count(const Terrain *terrain)
         total += terrain->segments[i].obstacle_count;
     }
     return total;
+}
+
+void rng_seed(Rng *rng, uint32_t seed)
+{
+    if (rng == 0) {
+        return;
+    }
+    /* 0 是 xorshift 的固定点，替换为非零常量。 */
+    rng->state = (seed != 0u) ? seed : 0x9E3779B9u;
+}
+
+uint32_t rng_next_u32(Rng *rng)
+{
+    uint32_t x;
+
+    if (rng == 0) {
+        return 0u;
+    }
+    x = rng->state;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    if (x == 0u) {
+        x = 0x6D2B79F5u;
+    }
+    rng->state = x;
+    return x;
+}
+
+int rng_range(Rng *rng, int min_inclusive, int max_exclusive)
+{
+    uint32_t span;
+    uint32_t value;
+
+    if (max_exclusive <= min_inclusive) {
+        return min_inclusive;
+    }
+    span = (uint32_t)(max_exclusive - min_inclusive);
+    value = rng_next_u32(rng) % span;
+    return min_inclusive + (int)value;
+}
+
+float rng_float01(Rng *rng)
+{
+    /* 使用高 24 位，结果严格位于 [0, 1)。 */
+    return (float)(rng_next_u32(rng) >> 8) * (1.0f / 16777216.0f);
 }

@@ -1,6 +1,7 @@
 @echo off
 rem Add the non-redistributable Visual Studio debug CRT to PATH for local runs.
 rem This file is only used by Debug builds; Release never needs it.
+findstr /C:"CMAKE_GENERATOR:INTERNAL=Ninja" "%~dp0..\build\CMakeCache.txt" >nul && exit /b 0
 if defined SP_DEBUG_ENV_READY exit /b 0
 
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"

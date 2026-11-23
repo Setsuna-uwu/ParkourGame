@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SnowParkour VERSION 0.1.0 LANGUAGES C CXX RC)
+project(SnowParkour VERSION 0.1.0 LANGUAGES C CXX)
 
 if(NOT WIN32)
     message(FATAL_ERROR "SnowParkour targets Windows 10/11 only.")
@@ -24,16 +24,7 @@ option(SP_ENABLE_DEBUG_HUD "Enable the F1 debug HUD and collision boxes" ON)
 
 set(SP_EASYX_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/easyx" CACHE PATH "Vendored EasyX SDK root")
 
-add_library(sp_core STATIC
-    src/core/collision.c
-    src/core/difficulty.c
-    src/core/game.c
-    src/core/input_abstraction.c
-    src/core/physics.c
-    src/core/rng.c
-    src/core/score.c
-    src/core/terrain.c
-)
+add_library(sp_core STATIC src/game.c src/terrain.c)
 target_include_directories(sp_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_compile_features(sp_core PUBLIC c_std_11)
 
@@ -44,20 +35,10 @@ else()
     target_compile_options(sp_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-add_executable(SnowParkour
-    src/main.c
-    src/platform/debug_crt.cpp
-    src/platform/input_easyx.cpp
-    src/platform/render_easyx.cpp
-    src/platform/storage_win32.cpp
-    src/platform/time_win32.cpp
-    src/platform/window_easyx.cpp
-    assets/app.rc
-)
+add_executable(SnowParkour src/main.c src/windows.cpp src/draw.cpp)
 target_link_libraries(SnowParkour PRIVATE sp_core)
 target_include_directories(SnowParkour PRIVATE
     "${SP_EASYX_ROOT}/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/assets"
 )
 
 if(MSVC)
@@ -93,15 +74,7 @@ endif()
 if(SP_BUILD_TESTS)
     enable_testing()
 
-    add_executable(sp_tests
-        tests/test_main.c
-        tests/test_collision.c
-        tests/test_difficulty.c
-        tests/test_game.c
-        tests/test_physics.c
-        tests/test_score.c
-        tests/test_terrain.c
-    )
+    add_executable(sp_tests EXCLUDE_FROM_ALL tests/test.c)
     target_link_libraries(sp_tests PRIVATE sp_core)
     if(MSVC)
         target_compile_options(sp_tests PRIVATE /W4 /utf-8)

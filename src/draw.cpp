@@ -1,16 +1,11 @@
-#include "platform/platform.h"
-
+#include "game.h"
 #include <graphics.h>
 #include <windows.h>
-
 #include <math.h>
 #include <stdio.h>
 #include <wchar.h>
 
 extern "C" {
-#include "core/collision.h"
-#include "core/config.h"
-#include "core/game.h"
 }
 
 /* ------------------------------------------------------------------ */
