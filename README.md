@@ -1,25 +1,20 @@
-# 雪原跑酷
+# 雪原跑酷 · 开工版
 
-Windows x64 上双击 `scripts/run.bat`，或在任意编辑器的终端运行 `.\scripts\run.bat`。脚本直接调用编译器，只需要以下任意一套，EasyX 已随项目附带：
+在 Windows 上双击根目录的 **run.bat**：它编译 C 玩法和 EasyX 窗口，然后启动程序。需要 x64 MinGW-w64（gcc 和 g++ 在 PATH 中）或 Visual Studio 的“使用 C++ 的桌面开发”。看到一条线和一个方块，按 Esc 退出，说明环境就绪。此时还没有滑行、跳跃、存档或计分。
 
-- **MinGW-w64 x64**：把包含 `gcc.exe` 和 `g++.exe` 的目录加入 PATH，两条命令都要能用。
-- **Visual Studio 或 Build Tools**：在安装器里选“使用 C++ 的桌面开发”。脚本找不到 MinGW-w64 时会尝试加载已安装的 x64 MSVC。
+## 三个人从哪里开始
 
-游戏生成在 `build/local/Release/SnowParkour.exe`。只试玩可以打开已编译的 Release 程序。改了源码再双击脚本重新编译。已有 CMake 工作流也可以继续使用 `CMakeLists.txt`，平时双击运行和测试都无需安装 CMake 或 Ninja。
+先读 `src/main.c` 的循环：检查输入 → 更新角色 → 画一帧。想看函数内部，在编辑器里点函数名按 F12。源码中的 `TODO #7`、`TODO #8`、`TODO #9` 对应下面三张单。
 
-空格跳跃，空中再按一次可以二段跳。P 暂停或继续，撞上障碍后按 R 或点鼠标重开，Esc 退出。F1 显示碰撞框。最高分保存在游戏程序旁边的 highscore.dat。
+| 任务 | 第一处改动 | 第一次怎样和队友接起来 |
+|---|---|---|
+| [#7 滑行和空翻](https://github.com/Setsuna-uwu/ParkourGame/issues/7) | `game.c` 保存角色的高度和速度；`draw.cpp` 读空格和画雪板。 | 先在平地做一次起跳，再拿 #8 提供的固定坡测试。把成功落地和摔倒两个一次性结果交给 #9。 |
+| [#8 雪道与路线](https://github.com/Setsuna-uwu/ParkourGame/issues/8) | `terrain.c` 的 `ground_at` 先实现固定坡。用平地、缓坡和一段空隙验证坐标，再加随机生成。 | 早交一条可重复的测试坡，#7 可以立刻接；金币、生命的位置交给 #9 做拾取结算。 |
+| [#9 一局与纪录](https://github.com/Setsuna-uwu/ParkourGame/issues/9) | `main.c` 循环里接一局的状态变化。内容增多时把规则放进自己的 `round.c`，在 run.bat 的两条 C 编译命令和两条链接命令中加入它。 | 先用临时输入模拟拾取、摔倒、落地和重开；再换成真实事件，最后试最高纪录跨进程保存。 |
 
-## 从一次跳跃读起
+## 三方公用的约定
 
-1. 打开 [main.c](src/main.c)。找到 while 循环，读键、调用 game_update、画画面，每轮走一步。
-2. 打开 [game.c](src/game.c)，从 game_update 找到 move_player。keys.jump_pressed 表示刚刚按下空格。player.vy 是竖直速度，屏幕坐标向下增大，所以起跳时速度为负数。函数算完把新的角色交还给 game.player。
-3. 想改跳跃高度，在 [game.h](src/game.h) 找 SP_JUMP_SPEED。这个文件还定义了 Player 等结构体。player.y 就是角色的纵坐标。
-4. 想改障碍排列，看 [terrain.c](src/terrain.c) 开头的 PATTERNS。每行写了一组障碍的类型和间距，地面目前是一条水平线。
-
-[draw.cpp](src/draw.cpp) 用 EasyX 画出当前游戏状态。[windows.cpp](src/windows.cpp) 处理窗口、按键、计时和存档。做跳跃和计分时主要看 C 文件即可。
-
-## 小组协作与验证
-
-按[三人协作指南](docs/team-workflow.md)接任务、分支提交和验收。先试玩一次跳跃，再故意撞上障碍重开。需要回归检查时运行 scripts/test.bat Debug。测试集中在 tests/test.c，平时启动游戏只编译游戏本身。
-
-后续计划是随机下坡滑雪、断崖和额外生命，当前分支保留平地跑酷原型。
+- 距离和高度均按像素；世界距离从起点向右增加，屏幕 y 向下增加。角色脚底与地面比较，绘图也从同一处查地面。
+- `ground_at(distance)` 返回 `Ground`。有雪面时使用其高度和坡度；遇到沟时 `has_ground` 为 0。先在当前接口上做，需要增改共享声明时在 Issue 通知另外两人。
+- 三人各自从**合入本开工版后的 main** 开任务分支。先交固定坡与事件约定，再并行做完整功能；PR 写明操作、预期结果和实际试玩情况。详细 GitHub 操作见[协作指南](docs/team-workflow.md)。
+- 旧平地跑酷、CMake 构建和原型测试可在[上一版](https://github.com/Setsuna-uwu/ParkourGame/tree/798a9b1eb14302a0ca5b42ed506c51d7fa7ff0c9)查阅。课设最终要展示的文件读写和制作者信息由 #9 实现。老师要求以根目录的课程设计原件为准。
