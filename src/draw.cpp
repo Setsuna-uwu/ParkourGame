@@ -24,6 +24,7 @@ Keys read_key(void){
         if(message.message==WM_KEYDOWN && !message.prevdown){
             if(message.vkcode==VK_ESCAPE) keys.quit=1;
             if(message.vkcode=='R') keys.retry=1;
+            if(message.vkcode==VK_F2) keys.reseed=1;
             if(message.vkcode==VK_SPACE){
                 space_down=1;
                 pressed_at=GetTickCount();  // 长按产生的重复消息不能重新计时。
@@ -98,12 +99,22 @@ void draw_frame(Player player){
     setlinecolor(RGB(255,155,55));
     line(nose.x,nose.y,tip.x,tip.y);
 
-    outtextxy(12,10,_T("轻点空格跳；长按或空中再按后翻，松开停转    R 重试    Esc 退出"));
-    if(player.crashed) outtextxy(12,36,_T("摔倒了，按 R 再试一次"));
+    outtextxy(12,10,_T("轻点空格跳；长按或空中再按后翻，松开停转    R 重试    F2 换雪道    Esc 退出"));
+    if(player.crashed) outtextxy(12,36,_T("摔倒了，按 R 重试本条，或按 F2 换一条"));
     else if(player.on_ground && flip_count(player)>0){
         wchar_t message[48];
         swprintf(message,48,L"后翻 %d 圈，站稳了！",flip_count(player));
         outtextxy(12,36,message);
+    }
+    {
+        wchar_t seed_text[96];
+        if(terrain_seed()==0){
+            swprintf(seed_text,96,L"雪道：固定样例（种子 0）    按 F2 生成随机雪道");
+        }else{
+            swprintf(seed_text,96,L"雪道种子：%u    按 R 重试本条，按 F2 换一条",terrain_seed());
+        }
+        settextcolor(RGB(215,230,245));
+        outtextxy(12,WINDOW_HEIGHT-24,seed_text);
     }
     // TODO #9：把本局分数、备用命和是否已结算传到这里显示。计分、扣命和存纪录放在 C 文件里。
     FlushBatchDraw();

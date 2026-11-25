@@ -15,13 +15,20 @@ typedef struct {
 Ground ground_at(float distance);
 Ground ramp_at(float distance);  /* 单独查木跳板；同一位置下方还可能有雪地。 */
 
+/* #8：在 start_player 之前调用一次。种子 0 = 原来的固定样例坡。 */
+void terrain_init(unsigned seed);
+unsigned terrain_seed(void);
+int terrain_gap_is_passable(float width, float speed);
+float terrain_safe_distance(void);
+
 /* 起跳那次按住多久才算想翻（毫秒）。空中重新按一次则不用等。 */
 enum { HOLD_TO_FLIP_MS = 160 };
 typedef struct {
     int jump_pressed;  /* 本帧刚按下空格 */
     int space_down;    /* 处理完按键后，空格是否还按着 */
     int long_press;    /* 这一次空格是否连续按够了 HOLD_TO_FLIP_MS */
-    int retry;         /* 按 R 从固定坡起点重新试 */
+    int retry;         /* 按 R 从当前雪道起点重新试 */
+    int reseed;        /* 按 F2 生成下一条随机雪道（调试用） */
     int quit;          /* 按 Esc 或关窗口 */
 } Keys;
 
