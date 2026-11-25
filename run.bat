@@ -1,9 +1,8 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-if not exist build mkdir build || goto fail
-pushd build || goto fail
-set "SDK=..\third_party\easyx"
+set "ROOT=%CD%"
+set "SDK=%ROOT%\third_party\easyx"
 for /f "delims=" %%I in ('gcc -dumpmachine 2^>nul') do if "%%I"=="x86_64-w64-mingw32" goto mingw
 
 if /i "%VSCMD_ARG_TGT_ARCH%"=="x64" goto msvc
@@ -14,16 +13,21 @@ if not defined VSROOT goto missing
 call "%VSROOT%\VC\Auxiliary\Build\vcvars64.bat" >nul || goto fail
 
 :msvc
-cl /nologo /utf-8 /W4 /std:c11 /c ..\src\main.c ..\src\game.c ..\src\terrain.c || goto fail
-cl /nologo /utf-8 /W4 /wd4201 /EHsc /DUNICODE /D_UNICODE /I"%SDK%\include" ..\src\draw.cpp main.obj game.obj terrain.obj /Fe:SnowParkour.exe /link /LIBPATH:"%SDK%\lib\x64" winmm.lib user32.lib gdi32.lib gdiplus.lib msimg32.lib || goto fail
+rem Keep MSVC object files outside the checkout. Each checkout has its own cache.
+set "CHECKOUT=%ROOT::=%"
+set "OBJDIR=%TEMP%\SnowParkour\%CHECKOUT%"
+if not exist "%OBJDIR%" mkdir "%OBJDIR%" || goto fail
+pushd "%OBJDIR%" || goto fail
+cl /nologo /utf-8 /W4 /wd4201 /std:c11 /EHsc /DUNICODE /D_UNICODE /I"%SDK%\include" "%ROOT%\src\*.c" "%ROOT%\src\draw.cpp" /Fe:"%ROOT%\SnowParkour.exe" /link /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup /LIBPATH:"%SDK%\lib\x64" winmm.lib user32.lib gdi32.lib gdiplus.lib msimg32.lib || goto fail
+popd
 goto run
 
 :mingw
-gcc -std=c11 -Wall -Wextra -c ..\src\main.c ..\src\game.c ..\src\terrain.c || goto fail
-g++ -std=c++17 -Wall -Wextra -Wno-unknown-pragmas -DUNICODE -D_UNICODE -I"%SDK%\include" ..\src\draw.cpp main.o game.o terrain.o "%SDK%\lib\mingw\x64\libeasyxw.a" -lwinmm -luser32 -lgdi32 -lgdiplus -lmsimg32 -static -o SnowParkour.exe || goto fail
+gcc -Wall -Wextra -Wno-unknown-pragmas -DUNICODE -D_UNICODE -I"%SDK%\include" src\*.c src\draw.cpp "%SDK%\lib\mingw\x64\libeasyxw.a" -lstdc++ -lwinmm -luser32 -lgdi32 -lgdiplus -lmsimg32 -static -mwindows -o SnowParkour.exe || goto fail
 
 :run
-SnowParkour.exe
+cd /d "%ROOT%" || goto fail
+"%ROOT%\SnowParkour.exe"
 exit /b %errorlevel%
 
 :missing
