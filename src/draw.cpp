@@ -78,9 +78,37 @@ static void draw_snow(float distance){
     }
 }
 
+static void draw_items(Player player){
+    int count,i;
+    const Pickup *items=terrain_pickups(&count);
+    for(i=0;i<count;i++){
+        int x=PLAYER_X+(int)(items[i].distance-player.distance);
+        int y=(int)items[i].y;
+        if(x<-20 || x>WINDOW_WIDTH+20) continue;
+        if(items[i].kind==ITEM_COIN){
+            setfillcolor(RGB(255,205,55));
+            solidcircle(x,y,5);
+            setlinecolor(RGB(255,245,180));
+            circle(x,y,6);
+        }else if(items[i].kind==ITEM_LIFE){
+            setfillcolor(RGB(245,80,95));
+            solidrectangle(x-6,y-6,x+6,y+6);
+            setlinecolor(WHITE);
+            line(x-3,y,x+3,y);
+            line(x,y-3,x,y+3);
+        }else{
+            setfillcolor(RGB(85,92,105));
+            solidellipse(x-9,y-5,x+9,y+7);
+            setlinecolor(RGB(160,170,185));
+            line(x-6,y-4,x+3,y+4);
+        }
+    }
+}
+
 void draw_frame(Player player){
     cleardevice();
     draw_snow(player.distance);
+    draw_items(player);
     // 人和板共用一个角度。橙色翘头朝前，空中也能看清翻到了哪里。
     POINT tail=board_point(player,-15,0);
     POINT nose=board_point(player,13,0);

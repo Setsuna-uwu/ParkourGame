@@ -16,10 +16,19 @@ Ground ground_at(float distance);
 Ground ramp_at(float distance);  /* 单独查木跳板；同一位置下方还可能有雪地。 */
 
 /* #8：在 start_player 之前调用一次。种子 0 = 原来的固定样例坡。 */
+enum { ITEM_COIN, ITEM_LIFE, ITEM_ROCK };
+typedef struct {
+    unsigned id;       /* 同一种子下稳定不变 */
+    unsigned kind;     /* ITEM_COIN / ITEM_LIFE / ITEM_ROCK */
+    float distance;
+    float y;
+} Pickup;
+
 void terrain_init(unsigned seed);
 unsigned terrain_seed(void);
-int terrain_gap_is_passable(float width, float speed);
-float terrain_safe_distance(void);
+int terrain_gap_is_passable(float width, float speed, float slope, float drop);
+float terrain_safe_distance(float from_distance);
+const Pickup *terrain_pickups(int *count);
 
 /* 起跳那次按住多久才算想翻（毫秒）。空中重新按一次则不用等。 */
 enum { HOLD_TO_FLIP_MS = 160 };
