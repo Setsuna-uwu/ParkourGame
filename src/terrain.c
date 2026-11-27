@@ -1,5 +1,4 @@
 #include "game.h"
-
 #define MAX_SEG 96
 #define MAX_ITEM 96
 #define FAR 100000.0f
@@ -8,20 +7,17 @@
 #define MAX_Y 400.0f
 #define MIN_SPEED 3.0f
 #define RUNWAY 360.0f
-
 enum { FLAT, SLOPE, CURVE, GAP, DROP };
 typedef struct {
     int type;
     float start, end, y, y1, slope;
     int ground;
 } Seg;
-
 static Seg segs[MAX_SEG];
 static Pickup items[MAX_ITEM];
-static int seg_count, item_count;
+static int seg_count, item_count, coin_count;
 static unsigned cur_seed, rng;
 static float ramp_start, ramp_end, ramp_y, ramp_slope;
-
 static float clampf(float v, float lo, float hi){
     return v<lo?lo:v>hi?hi:v;
 }
@@ -33,11 +29,9 @@ static unsigned rnd(void){
     rng=x;
     return x;
 }
-
 static float rf(float lo, float hi){
     return lo+(hi-lo)*(float)(rnd()>>8)*(1.0f/16777216.0f);
 }
-
 static void add(int type, float start, float end, float y, float y1, float slope, int ground){
     Seg *s;
     if(seg_count>=MAX_SEG || end<=start) return;
@@ -45,7 +39,6 @@ static void add(int type, float start, float end, float y, float y1, float slope
     s->type=type; s->start=start; s->end=end;
     s->y=y; s->y1=y1; s->slope=slope; s->ground=ground;
 }
-
 static void fixed_route(void){
     add(FLAT,0,300,250,250,0,1);
     add(SLOPE,300,700,250,350,0.25f,1);
@@ -54,7 +47,6 @@ static void fixed_route(void){
     add(SLOPE,750,1150,345,395,0.125f,1);
     add(FLAT,1150,FAR,395,395,0,1);
 }
-
 static void random_route(unsigned seed){
     float d=0,y=250,last_gap=-10000;
     rng=seed?seed:1u;
@@ -93,17 +85,14 @@ static void random_route(unsigned seed){
     }
     if(seg_count<MAX_SEG) add(FLAT,d,FAR,y,y,0,1);
 }
-
 static int find_seg(float distance){
     int i=0;
     while(i+1<seg_count && segs[i+1].start<=distance) i++;
     return i;
 }
-
 static void ensure(void){
     if(!seg_count) terrain_init(0);
 }
-
 static void item(int kind, float d, float y){
     if(item_count>=MAX_ITEM) return;
     items[item_count].id=(unsigned)item_count;
@@ -112,7 +101,6 @@ static void item(int kind, float d, float y){
     items[item_count].y=y;
     item_count++;
 }
-
 static void make_items(void){
     int i,j,life=0,rocks=0;
     for(i=0;i<seg_count;i++){
@@ -152,23 +140,20 @@ static void make_items(void){
 }
 
 void terrain_init(unsigned seed){
-    seg_count=item_count=0;
+    seg_count=item_count=coin_count=0;
     cur_seed=seed;
     ramp_start=ramp_end=ramp_y=ramp_slope=0;
     if(seed) random_route(seed); else fixed_route();
     make_items();
 }
-
 unsigned terrain_seed(void){
     return cur_seed;
 }
-
 int terrain_gap_is_passable(float width, float speed, float slope, float drop){
     float air=34.0f+drop*0.06f-slope*10.0f;
     if(air<30) air=30;
     return width>0 && speed>0 && width<=speed*air;
 }
-
 Ground ground_at(float distance){
     Seg *s;
     Ground g={0,0,0};
@@ -190,7 +175,6 @@ Ground ground_at(float distance){
     }
     return g;
 }
-
 Ground ramp_at(float distance){
     Ground g={0,0,0};
     ensure();
@@ -208,7 +192,6 @@ static int rock_near(float d){
         if(items[i].kind==ITEM_ROCK && items[i].distance>d-80 && items[i].distance<d+80) return 1;
     return 0;
 }
-
 float terrain_safe_distance(float from){
     int i,k;
     ensure();
@@ -222,9 +205,19 @@ float terrain_safe_distance(float from){
     }
     return 0;
 }
-
 const Pickup *terrain_pickups(int *count){
     ensure();
     if(count) *count=item_count;
     return items;
 }
+int terrain_collect_coins(float d, float feet_y){
+    int i;
+    for(i=0;i<item_count;i++) if(items[i].kind==ITEM_COIN &&
+        items[i].distance>d-18 && items[i].distance<d+18 &&
+        items[i].y>feet_y-70 && items[i].y<feet_y+10){
+        items[i].kind=0xFFu;
+        coin_count++;
+    }
+    return coin_count;
+}
+int terrain_coin_count(void){ return coin_count; }

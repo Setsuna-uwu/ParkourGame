@@ -96,7 +96,7 @@ static void draw_items(Player player){
             setlinecolor(WHITE);
             line(x-3,y,x+3,y);
             line(x,y-3,x,y+3);
-        }else{
+        }else if(items[i].kind==ITEM_ROCK){
             setfillcolor(RGB(85,92,105));
             solidellipse(x-9,y-5,x+9,y+7);
             setlinecolor(RGB(160,170,185));
@@ -128,6 +128,10 @@ void draw_frame(Player player){
     line(nose.x,nose.y,tip.x,tip.y);
 
     outtextxy(12,10,_T("轻点空格跳；长按或空中再按后翻，松开停转    R 重试    F2 换雪道    Esc 退出"));
+    wchar_t coin_text[32];
+    swprintf(coin_text,32,L"金币 %d",terrain_coin_count());
+    settextcolor(RGB(255,210,80));
+    outtextxy(WINDOW_WIDTH-12-textwidth(coin_text),10,coin_text);
     if(player.crashed) outtextxy(12,36,_T("摔倒了，按 R 重试本条，或按 F2 换一条"));
     else if(player.on_ground && flip_count(player)>0){
         wchar_t message[48];

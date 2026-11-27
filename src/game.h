@@ -29,6 +29,8 @@ unsigned terrain_seed(void);
 int terrain_gap_is_passable(float width, float speed, float slope, float drop);
 float terrain_safe_distance(float from_distance);
 const Pickup *terrain_pickups(int *count);
+int terrain_collect_coins(float distance, float feet_y);
+int terrain_coin_count(void);
 
 /* 起跳那次按住多久才算想翻（毫秒）。空中重新按一次则不用等。 */
 enum { HOLD_TO_FLIP_MS = 160 };

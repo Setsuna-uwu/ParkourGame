@@ -18,9 +18,11 @@ int main(void){
             terrain_init(terrain_seed()+1u);  /* 换一条路线，本局从起点重来。 */
             player=start_player(0);
         }else if(keys.retry){
-            player=start_player(0);           /* 同一种子，同一条路线。 */
+            terrain_init(terrain_seed());     /* 同一种子，重开本局并重置金币。 */
+            player=start_player(0);
         }else{
             player=update_player(player,keys);
+            terrain_collect_coins(player.distance,player.feet_y);
             /* #9：LAND_FLIP 时可按 flip_count(player) 计分。LAND_CRASH 时只扣一次命；
                有备用命就用 start_player(安全位置) 恢复角色，本局分数和剩余命由 #9 保管。 */
         }
