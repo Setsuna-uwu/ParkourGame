@@ -24,6 +24,7 @@ Keys read_key(void){
         if(message.message==WM_KEYDOWN && !message.prevdown){
             if(message.vkcode==VK_ESCAPE) keys.quit=1;
             if(message.vkcode=='R') keys.retry=1;
+            if(message.vkcode==VK_F2) keys.reseed=1;
             if(message.vkcode==VK_SPACE){
                 space_down=1;
                 pressed_at=GetTickCount();  // 长按产生的重复消息不能重新计时。
@@ -77,9 +78,37 @@ static void draw_snow(float distance){
     }
 }
 
+static void draw_items(Player player){
+    int count,i;
+    const Pickup *items=terrain_pickups(&count);
+    for(i=0;i<count;i++){
+        int x=PLAYER_X+(int)(items[i].distance-player.distance);
+        int y=(int)items[i].y;
+        if(x<-20 || x>WINDOW_WIDTH+20) continue;
+        if(items[i].kind==ITEM_COIN){
+            setfillcolor(RGB(255,205,55));
+            solidcircle(x,y,5);
+            setlinecolor(RGB(255,245,180));
+            circle(x,y,6);
+        }else if(items[i].kind==ITEM_LIFE){
+            setfillcolor(RGB(245,80,95));
+            solidrectangle(x-6,y-6,x+6,y+6);
+            setlinecolor(WHITE);
+            line(x-3,y,x+3,y);
+            line(x,y-3,x,y+3);
+        }else if(items[i].kind==ITEM_ROCK){
+            setfillcolor(RGB(85,92,105));
+            solidellipse(x-9,y-5,x+9,y+7);
+            setlinecolor(RGB(160,170,185));
+            line(x-6,y-4,x+3,y+4);
+        }
+    }
+}
+
 void draw_frame(Player player){
     cleardevice();
     draw_snow(player.distance);
+    draw_items(player);
     // 人和板共用一个角度。橙色翘头朝前，空中也能看清翻到了哪里。
     POINT tail=board_point(player,-15,0);
     POINT nose=board_point(player,13,0);
@@ -98,12 +127,26 @@ void draw_frame(Player player){
     setlinecolor(RGB(255,155,55));
     line(nose.x,nose.y,tip.x,tip.y);
 
-    outtextxy(12,10,_T("轻点空格跳；长按或空中再按后翻，松开停转    R 重试    Esc 退出"));
-    if(player.crashed) outtextxy(12,36,_T("摔倒了，按 R 再试一次"));
+    outtextxy(12,10,_T("轻点空格跳；长按或空中再按后翻，松开停转    R 重试    F2 换雪道    Esc 退出"));
+    wchar_t coin_text[32];
+    swprintf(coin_text,32,L"金币 %d",terrain_coin_count());
+    settextcolor(RGB(255,210,80));
+    outtextxy(WINDOW_WIDTH-12-textwidth(coin_text),10,coin_text);
+    if(player.crashed) outtextxy(12,36,_T("摔倒了，按 R 重试本条，或按 F2 换一条"));
     else if(player.on_ground && flip_count(player)>0){
         wchar_t message[48];
         swprintf(message,48,L"后翻 %d 圈，站稳了！",flip_count(player));
         outtextxy(12,36,message);
+    }
+    {
+        wchar_t seed_text[96];
+        if(terrain_seed()==0){
+            swprintf(seed_text,96,L"雪道：固定样例（种子 0）    按 F2 生成随机雪道");
+        }else{
+            swprintf(seed_text,96,L"雪道种子：%u    按 R 重试本条，按 F2 换一条",terrain_seed());
+        }
+        settextcolor(RGB(215,230,245));
+        outtextxy(12,WINDOW_HEIGHT-24,seed_text);
     }
     // TODO #9：把本局分数、备用命和是否已结算传到这里显示。计分、扣命和存纪录放在 C 文件里。
     FlushBatchDraw();
