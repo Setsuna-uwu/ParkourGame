@@ -6,7 +6,7 @@ extern "C" {
 #include "game.h"
 
 /* 课程报告需要真实姓名/学号；这里先放组员的 GitHub 名，提交前替换成学校要求的信息。 */
-#define ROUND_AUTHOR L"制作：Setsuna-uwu / Wty-Phoenixmoon（学号待补）"
+#define ROUND_AUTHOR L"制作：Setsuna-uwu（组长） / Wty-Phoenixmoon / shrink ink（学号待补）"
 
 typedef struct {
     int score;          /* 当前分 = 最远距离 / 10 + 金币 * 5 + 特技分 */
