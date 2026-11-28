@@ -2,6 +2,12 @@
 #include <math.h>
 #include <wchar.h>
 #include "game.h"
+#include "round.h"
+
+static const RoundState *round_for_draw;  /* main 的 RoundState 生命周期覆盖整个窗口 */
+static void draw_round_frame(const RoundState *round);
+
+void round_set_draw(const RoundState *round){ round_for_draw=round; }
 
 int open_window(void){
     if(!initgraph(WINDOW_WIDTH,WINDOW_HEIGHT)) return 0;
@@ -149,8 +155,41 @@ void draw_frame(Player player){
         outtextxy(12,WINDOW_HEIGHT-24,seed_text);
     }
     // TODO #9：把本局分数、备用命和是否已结算传到这里显示。计分、扣命和存纪录放在 C 文件里。
+    if(round_for_draw) draw_round_frame(round_for_draw);  /* 同一帧 Flush 前叠加 HUD */
     FlushBatchDraw();
     Sleep(16);
+}
+
+/* #9 的覆盖层：分数/备用命/最高分、作者信息和结算面板都在原有画面之上追加。
+   这个函数在 draw_frame 之后调用，因此不修改组长的雪道、角色和金币绘制。 */
+static void draw_round_frame(const RoundState *round){
+    wchar_t text[96];
+    int x;
+
+    settextcolor(RGB(230,240,250));
+    swprintf(text,96,L"分数 %d",round->score);
+    outtextxy(12,58,text);
+    swprintf(text,96,L"备用命 %d   最高 %d",round->lives,round->best);
+    outtextxy(12,80,text);
+
+    settextcolor(RGB(205,220,240));
+    x=WINDOW_WIDTH-12-textwidth(ROUND_AUTHOR);
+    outtextxy(x,WINDOW_HEIGHT-42,ROUND_AUTHOR);
+
+    if(round->game_over){
+        setfillcolor(RGB(18,27,45));
+        solidrectangle(170,135,630,345);
+        setlinecolor(RGB(245,185,90));
+        rectangle(170,135,630,345);
+        settextcolor(RGB(255,210,80));
+        swprintf(text,96,L"GAME OVER  分数 %d",round->score);
+        outtextxy((WINDOW_WIDTH-textwidth(text))/2,165,text);
+        settextcolor(RGB(230,240,250));
+        swprintf(text,96,L"最高分 %d",round->best);
+        outtextxy((WINDOW_WIDTH-textwidth(text))/2,210,text);
+        swprintf(text,96,L"按 R 或 F2 开新局");
+        outtextxy((WINDOW_WIDTH-textwidth(text))/2,255,text);
+    }
 }
 
 void close_window(void){
